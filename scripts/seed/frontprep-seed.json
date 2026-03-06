@@ -1,0 +1,43 @@
+{
+  "categories": [
+    { "slug": "html", "name": "HTML", "description": "Основы структуры веб-страниц", "order": 1 },
+    { "slug": "css", "name": "CSS", "description": "Стилизация и layout", "order": 2 },
+    { "slug": "javascript", "name": "JavaScript", "description": "Ядро фронтенд-разработки", "order": 3 },
+    { "slug": "typescript", "name": "TypeScript", "description": "Типобезопасный JavaScript", "order": 4 },
+    { "slug": "react", "name": "React", "description": "UI библиотека для SPA", "order": 5 },
+    { "slug": "browser", "name": "Browser", "description": "Работа браузера и Web API", "order": 6 },
+    { "slug": "performance", "name": "Performance", "description": "Оптимизация производительности", "order": 7 }
+  ],
+  "questions": [
+    {
+      "title": "Что такое семантический HTML?",
+      "answer": "Семантические теги описывают смысл контента, а не внешний вид: <header>, <nav>, <main>, <article>, <section>, <aside>, <footer>. Улучшают SEO, доступность (screen readers), читаемость кода.",
+      "categorySlug": "html",
+      "difficulty": "junior"
+    },
+    {
+      "title": "В чём разница между margin и padding?",
+      "answer": "margin — внешний отступ элемента; padding — внутренний отступ между контентом и границей элемента.",
+      "categorySlug": "css",
+      "difficulty": "junior"
+    },
+    {
+      "title": "Что такое замыкание (closure) в JavaScript?",
+      "answer": "Замыкание — функция, которая запоминает своё лексическое окружение даже после выхода из внешней функции. Комбинация функции и лексического окружения, в котором она была объявлена.",
+      "categorySlug": "javascript",
+      "difficulty": "middle"
+    },
+    {
+      "title": "Зачем нужен тип any в TypeScript?",
+      "answer": "any отключает проверку типов там, где это временно необходимо. Использовать осознанно, иначе теряются преимущества TypeScript.",
+      "categorySlug": "typescript",
+      "difficulty": "middle"
+    },
+    {
+      "title": "Что такое виртуальный DOM в React?",
+      "answer": "Абстракция дерева UI в памяти. React сравнивает предыдущее и новое состояние и минимально обновляет реальный DOM (diffing + patch).",
+      "categorySlug": "react",
+      "difficulty": "middle"
+    }
+  ]
+}

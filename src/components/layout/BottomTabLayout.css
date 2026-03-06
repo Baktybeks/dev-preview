@@ -1,0 +1,35 @@
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background-color: #0f172a;
+  color: #e5e7eb;
+}
+
+.app-content {
+  flex: 1;
+  padding: 16px;
+}
+
+.bottom-tabs {
+  display: flex;
+  justify-content: space-around;
+  padding: 8px 4px 12px;
+  border-top: 1px solid rgba(148, 163, 184, 0.3);
+  background-color: #020617;
+}
+
+.tab-link {
+  flex: 1;
+  text-align: center;
+  padding: 8px 4px;
+  font-size: 12px;
+  color: #64748b;
+  text-decoration: none;
+}
+
+.tab-link.active {
+  color: #e5e7eb;
+  font-weight: 600;
+}
+

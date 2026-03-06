@@ -1,0 +1,39 @@
+{
+  "name": "dev-interview",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "db:test": "node scripts/testConnection.cjs",
+    "db:setup": "node scripts/setupCollections.cjs setup",
+    "db:reset": "node scripts/setupCollections.cjs reset",
+    "db:deleteAttribute": "node scripts/setupCollections.cjs deleteAttribute",
+    "db:reset-setup": "node scripts/setupCollections.cjs reset-setup",
+    "db:seed": "node scripts/seedData.cjs scripts/seed/frontprep-seed.json",
+    "db:csv2seed": "node scripts/csvToSeed.cjs",
+    "db:seed:checklist": "node scripts/seedData.cjs scripts/seed/checklist-seed.json"
+  },
+  "devDependencies": {
+    "typescript": "~5.9.3",
+    "vite": "^7.3.1"
+  },
+  "dependencies": {
+    "@capacitor/cli": "^7.6.0",
+    "@capacitor/core": "^7.6.0",
+    "@tanstack/react-query": "^5.90.21",
+    "@tanstack/react-query-devtools": "^5.91.3",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react-swc": "^4.2.3",
+    "appwrite": "^23.0.0",
+    "dotenv": "^17.3.1",
+    "node-appwrite": "^22.1.3",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "react-router-dom": "^7.13.1",
+    "zustand": "^5.0.11"
+  }
+}
