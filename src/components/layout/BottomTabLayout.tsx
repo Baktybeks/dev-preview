@@ -16,6 +16,9 @@ export const BottomTabLayout: React.FC = () => {
         <NavLink to="/categories" className="tab-link">
           Категории
         </NavLink>
+        <NavLink to="/progress" className="tab-link">
+          Прогресс
+        </NavLink>
         <NavLink to="/profile" className="tab-link">
           Профиль
         </NavLink>

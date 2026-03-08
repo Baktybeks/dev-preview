@@ -39,3 +39,27 @@ export async function getQuestionsByCategory(
   return { total: res.total, documents: res.documents };
 }
 
+export async function getQuestionsByIds(
+  questionIds: string[],
+): Promise<Question[]> {
+  if (questionIds.length === 0) return [];
+  const collectionId = getCollectionId('questions');
+  const res = await appwriteDatabases.listDocuments<Question>(
+    appwriteDatabaseId,
+    collectionId,
+    [Query.equal('$id', questionIds)],
+  );
+  return res.documents;
+}
+
+export async function getTotalQuestionsCount(): Promise<number> {
+  const collectionId = getCollectionId('questions');
+  const res = await appwriteDatabases.listDocuments(
+    appwriteDatabaseId,
+    collectionId,
+    [],
+    1,
+  );
+  return res.total;
+}
+

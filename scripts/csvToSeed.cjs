@@ -38,11 +38,11 @@ function mapSectionToSlug(section) {
 }
 
 function mapLevelToDifficulty(level) {
-  if (!level) return 'junior';
+  if (!level) return 'easy';
   const l = String(level).toLowerCase();
-  if (l.includes('senior')) return 'senior';
-  if (l.includes('middle')) return 'middle';
-  return 'junior';
+  if (l.includes('senior')) return 'hard';
+  if (l.includes('middle')) return 'medium';
+  return 'easy';
 }
 
 function truncate(str, max) {

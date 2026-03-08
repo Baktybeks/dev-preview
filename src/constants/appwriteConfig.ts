@@ -8,6 +8,12 @@ export const appwriteConfig = {
       import.meta.env.VITE_APPWRITE_CATEGORIES_COLLECTION_ID || 'categories',
     questions:
       import.meta.env.VITE_APPWRITE_QUESTIONS_COLLECTION_ID || 'questions',
+    users: import.meta.env.VITE_APPWRITE_USERS_COLLECTION_ID || 'users',
+    user_question_status:
+      import.meta.env.VITE_APPWRITE_USER_QUESTION_STATUS_COLLECTION_ID ||
+      'user_question_status',
+    favorites:
+      import.meta.env.VITE_APPWRITE_FAVORITES_COLLECTION_ID || 'favorites',
   },
 } as const;
 

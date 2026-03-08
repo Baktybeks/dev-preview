@@ -12,9 +12,8 @@
     "db:reset": "node scripts/setupCollections.cjs reset",
     "db:deleteAttribute": "node scripts/setupCollections.cjs deleteAttribute",
     "db:reset-setup": "node scripts/setupCollections.cjs reset-setup",
-    "db:seed": "node scripts/seedData.cjs scripts/seed/frontprep-seed.json",
-    "db:csv2seed": "node scripts/csvToSeed.cjs",
-    "db:seed:checklist": "node scripts/seedData.cjs scripts/seed/checklist-seed.json"
+    "db:seed": "node scripts/seedData.cjs",
+    "db:csv2seed": "node scripts/csvToSeed.cjs"
   },
   "devDependencies": {
     "typescript": "~5.9.3",

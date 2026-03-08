@@ -1,18 +1,29 @@
 import React, { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getQuestionsByCategory, getCategories } from '../../api/questionsApi';
+import {
+  getQuestionStatuses,
+  getFavoriteQuestionIds,
+  setQuestionStatus,
+  addFavorite,
+  removeFavorite,
+  type QuestionStatus,
+} from '../../api/progressApi';
+import { useAuthGuard } from '@hooks/useAuthGuard';
 import type { Question } from '../../types/question';
 
 const DIFFICULTY_LABEL: Record<string, string> = {
-  junior: 'Junior',
-  middle: 'Middle',
-  senior: 'Senior',
+  easy: 'Легко',
+  medium: 'Средне',
+  hard: 'Сложно',
 };
 
 export const QuestionsScreen: React.FC = () => {
   const { id: categoryId } = useParams<{ id: string }>();
   const [openId, setOpenId] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const { requireAuth, modal, userId } = useAuthGuard();
 
   const { data: catData } = useQuery({
     queryKey: ['categories'],
@@ -26,7 +37,87 @@ export const QuestionsScreen: React.FC = () => {
     enabled: !!categoryId,
   });
 
-  const questions = data?.documents ?? [];
+  const { data: statusMap = {} } = useQuery({
+    queryKey: ['questionStatuses', userId],
+    queryFn: () => getQuestionStatuses(userId!),
+    enabled: !!userId,
+  });
+
+  const { data: favoriteIds = [] } = useQuery({
+    queryKey: ['favoriteIds', userId],
+    queryFn: () => getFavoriteQuestionIds(userId!),
+    enabled: !!userId,
+  });
+
+  const setStatusMutation = useMutation({
+    mutationFn: ({
+      questionId,
+      status,
+    }: { questionId: string; status: QuestionStatus }) =>
+      setQuestionStatus(userId!, questionId, status),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['questionStatuses', userId] });
+    },
+  });
+
+  const addFavoriteMutation = useMutation({
+    mutationFn: (questionId: string) => addFavorite(userId!, questionId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['favoriteIds', userId] });
+    },
+  });
+
+  const removeFavoriteMutation = useMutation({
+    mutationFn: (questionId: string) => removeFavorite(userId!, questionId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['favoriteIds', userId] });
+    },
+  });
+
+  const rawQuestions = data?.documents ?? [];
+  const [statusFilter, setStatusFilter] = useState<
+    'all' | 'know' | 'dont_know' | 'unanswered'
+  >('all');
+
+  const statusOrder = (s?: QuestionStatus) =>
+    s === 'dont_know' ? 0 : s === 'know' ? 1 : 2;
+  const sortedQuestions = [...rawQuestions].sort(
+    (a, b) => statusOrder(statusMap[a.$id]) - statusOrder(statusMap[b.$id]),
+  );
+  const isUnanswered = (q: { $id: string }) => {
+    const s = statusMap[q.$id];
+    return s === undefined || s === 'unanswered';
+  };
+  const questions =
+    statusFilter === 'all'
+      ? sortedQuestions
+      : statusFilter === 'unanswered'
+        ? sortedQuestions.filter(isUnanswered)
+        : sortedQuestions.filter((q) => statusMap[q.$id] === statusFilter);
+
+  const totalCount = data?.total ?? sortedQuestions.length;
+  const countAll = sortedQuestions.length;
+  const countKnow = sortedQuestions.filter((q) => statusMap[q.$id] === 'know').length;
+  const countDontKnow = sortedQuestions.filter((q) => statusMap[q.$id] === 'dont_know').length;
+  const countUnanswered = sortedQuestions.filter(isUnanswered).length;
+
+  const handleSetStatus = (questionId: string, status: QuestionStatus) => {
+    const current = statusMap[questionId];
+    const next = current === status ? 'unanswered' : status;
+    requireAuth(() => {
+      setStatusMutation.mutate({ questionId, status: next });
+    });
+  };
+
+  const handleToggleFavorite = (questionId: string) => {
+    requireAuth(() => {
+      if (favoriteIds.includes(questionId)) {
+        removeFavoriteMutation.mutate(questionId);
+      } else {
+        addFavoriteMutation.mutate(questionId);
+      }
+    });
+  };
 
   if (isLoading) {
     return (
@@ -47,7 +138,7 @@ export const QuestionsScreen: React.FC = () => {
     );
   }
 
-  if (!categoryId || questions.length === 0) {
+  if (!categoryId || rawQuestions.length === 0) {
     return (
       <div style={{ padding: '16px' }}>
         <p>В этой категории пока нет вопросов.</p>
@@ -56,14 +147,53 @@ export const QuestionsScreen: React.FC = () => {
     );
   }
 
+  const filterBtn = (
+    key: 'all' | 'know' | 'dont_know' | 'unanswered',
+    label: string,
+    count: number,
+  ) => (
+    <button
+      type="button"
+      onClick={() => setStatusFilter(key)}
+      style={{
+        padding: '8px 14px',
+        borderRadius: '8px',
+        border: '1px solid rgba(148, 163, 184, 0.3)',
+        background: statusFilter === key ? 'rgba(59, 130, 246, 0.2)' : 'transparent',
+        color: statusFilter === key ? '#93c5fd' : '#94a3b8',
+        fontSize: '13px',
+        cursor: 'pointer',
+      }}
+    >
+      {label} ({count})
+    </button>
+  );
+
   return (
     <div style={{ padding: '16px', maxWidth: '600px' }}>
+      {modal}
       <Link to="/categories" style={{ color: '#94a3b8', marginBottom: '16px', display: 'block' }}>
         ← Категории
       </Link>
       {category && (
-        <h1 style={{ margin: '0 0 16px', fontSize: '20px' }}>{category.name}</h1>
+        <h1 style={{ margin: '0 0 16px', fontSize: '20px' }}>
+          {category.name}
+          <span style={{ fontWeight: 400, color: '#64748b', fontSize: '16px' }}>
+            {' '}({totalCount})
+          </span>
+        </h1>
       )}
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
+        {filterBtn('all', 'Все', countAll)}
+        {filterBtn('know', '✓ Знаю', countKnow)}
+        {filterBtn('dont_know', '✗ Не знаю', countDontKnow)}
+        {filterBtn('unanswered', 'Не отмечено', countUnanswered)}
+      </div>
+      {questions.length === 0 ? (
+        <p style={{ color: '#94a3b8' }}>
+          Нет вопросов по выбранному фильтру.
+        </p>
+      ) : (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
         {questions.map((q) => (
           <AccordionItem
@@ -71,9 +201,14 @@ export const QuestionsScreen: React.FC = () => {
             question={q}
             isOpen={openId === q.$id}
             onToggle={() => setOpenId(openId === q.$id ? null : q.$id)}
+            status={statusMap[q.$id]}
+            isFavorite={favoriteIds.includes(q.$id)}
+            onSetStatus={(status) => handleSetStatus(q.$id, status)}
+            onToggleFavorite={() => handleToggleFavorite(q.$id)}
           />
         ))}
       </div>
+      )}
     </div>
   );
 };
@@ -82,9 +217,31 @@ interface AccordionItemProps {
   question: Question;
   isOpen: boolean;
   onToggle: () => void;
+  status?: QuestionStatus;
+  isFavorite: boolean;
+  onSetStatus: (status: QuestionStatus) => void;
+  onToggleFavorite: () => void;
 }
 
-const AccordionItem: React.FC<AccordionItemProps> = ({ question, isOpen, onToggle }) => {
+const btnStyle: React.CSSProperties = {
+  padding: '8px 12px',
+  borderRadius: '8px',
+  border: '1px solid rgba(148, 163, 184, 0.3)',
+  background: 'transparent',
+  color: '#94a3b8',
+  fontSize: '13px',
+  cursor: 'pointer',
+};
+
+const AccordionItem: React.FC<AccordionItemProps> = ({
+  question,
+  isOpen,
+  onToggle,
+  status,
+  isFavorite,
+  onSetStatus,
+  onToggleFavorite,
+}) => {
   return (
     <div
       style={{
@@ -142,6 +299,53 @@ const AccordionItem: React.FC<AccordionItemProps> = ({ question, isOpen, onToggl
             }}
           >
             {question.answer}
+          </div>
+          <div
+            style={{
+              marginTop: '14px',
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: '8px',
+              alignItems: 'center',
+            }}
+          >
+            <button
+              type="button"
+              style={{
+                ...btnStyle,
+                ...(status === 'know'
+                  ? { background: 'rgba(34, 197, 94, 0.2)', color: '#86efac', borderColor: 'rgba(34, 197, 94, 0.4)' }
+                  : {}),
+              }}
+              onClick={() => onSetStatus('know')}
+            >
+              ✓ Знаю
+            </button>
+            <button
+              type="button"
+              style={{
+                ...btnStyle,
+                ...(status === 'dont_know'
+                  ? { background: 'rgba(239, 68, 68, 0.2)', color: '#fca5a5', borderColor: 'rgba(239, 68, 68, 0.4)' }
+                  : {}),
+              }}
+              onClick={() => onSetStatus('dont_know')}
+            >
+              ✗ Не знаю
+            </button>
+            <button
+              type="button"
+              style={{
+                ...btnStyle,
+                ...(isFavorite
+                  ? { color: '#fbbf24', borderColor: 'rgba(251, 191, 36, 0.5)' }
+                  : {}),
+              }}
+              onClick={onToggleFavorite}
+              title={isFavorite ? 'Убрать из избранного' : 'В избранное'}
+            >
+              {isFavorite ? '★ В избранном' : '☆ В избранное'}
+            </button>
           </div>
         </div>
       )}

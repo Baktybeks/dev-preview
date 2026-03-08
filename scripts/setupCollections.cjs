@@ -12,10 +12,16 @@ const appwriteConfig = {
       process.env.VITE_APPWRITE_CATEGORIES_COLLECTION_ID || 'categories',
     questions:
       process.env.VITE_APPWRITE_QUESTIONS_COLLECTION_ID || 'questions',
+    users: process.env.VITE_APPWRITE_USERS_COLLECTION_ID || 'users',
+    user_question_status:
+      process.env.VITE_APPWRITE_USER_QUESTION_STATUS_COLLECTION_ID ||
+      'user_question_status',
+    favorites:
+      process.env.VITE_APPWRITE_FAVORITES_COLLECTION_ID || 'favorites',
   },
 };
 
-// Схемы коллекций под домен FrontPrep
+// Схемы коллекций под домен FrontPrep (роли, статусы, избранное, админы)
 const COLLECTION_SCHEMAS = {
   categories: {
     name: { type: 'string', required: true, size: 255 },
@@ -30,9 +36,33 @@ const COLLECTION_SCHEMAS = {
     difficulty: {
       type: 'enum',
       required: true,
-      elements: ['junior', 'middle', 'senior'],
+      elements: ['easy', 'medium', 'hard'],
     },
     categoryId: { type: 'string', required: true, size: 36 },
+    tags: { type: 'string', required: false, size: 255, array: true },
+  },
+
+  // Статус вопроса для пользователя: знаю / не знаю / не отвечено
+  user_question_status: {
+    userId: { type: 'string', required: true, size: 36 },
+    questionId: { type: 'string', required: true, size: 36 },
+    status: {
+      type: 'enum',
+      required: true,
+      elements: ['know', 'dont_know', 'unanswered'],
+    },
+  },
+
+  // Избранные вопросы пользователя (для повторения)
+  favorites: {
+    userId: { type: 'string', required: true, size: 36 },
+    questionId: { type: 'string', required: true, size: 36 },
+  },
+
+  // Профиль пользователя в БД (связь с Appwrite Auth по userId). Первый пользователь — isAdmin: true.
+  users: {
+    userId: { type: 'string', required: true, size: 36 },
+    isAdmin: { type: 'boolean', required: true, default: false },
   },
 };
 
@@ -45,7 +75,34 @@ const COLLECTION_INDEXES = {
     { key: 'categoryId', type: 'key' },
     { key: 'difficulty', type: 'key' },
   ],
+  user_question_status: [
+    { key: 'userId', type: 'key' },
+    { key: 'questionId', type: 'key' },
+    {
+      key: 'userId_questionId',
+      type: 'unique',
+      attributes: ['userId', 'questionId'],
+    },
+  ],
+  favorites: [
+    { key: 'userId', type: 'key' },
+    { key: 'questionId', type: 'key' },
+    {
+      key: 'userId_questionId',
+      type: 'unique',
+      attributes: ['userId', 'questionId'],
+    },
+  ],
+  users: [{ key: 'userId', type: 'unique' }],
 };
+
+// Права по умолчанию: чтение всем, запись — авторизованным.
+const DEFAULT_PERMISSIONS = [
+  Permission.read(Role.any()),
+  Permission.create(Role.users()),
+  Permission.update(Role.users()),
+  Permission.delete(Role.users()),
+];
 
 const client = new Client();
 client
@@ -191,17 +248,13 @@ const setupCollections = async () => {
       try {
         const collectionId = appwriteConfig.collections[collectionName];
 
+        const permissions = DEFAULT_PERMISSIONS;
+
         await databases.createCollection({
           databaseId,
           collectionId,
           name: collectionName,
-          permissions: [
-            // Публичное чтение, запись/обновление/удаление только для авторизованных
-            Permission.read(Role.any()),
-            Permission.create(Role.users()),
-            Permission.update(Role.users()),
-            Permission.delete(Role.users()),
-          ],
+          permissions,
           documentSecurity: true,
         });
 

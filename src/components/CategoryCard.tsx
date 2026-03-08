@@ -22,14 +22,17 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({ category, questionCo
         textDecoration: 'none',
       }}
     >
-      <h3 style={{ margin: '0 0 4px', fontSize: '18px' }}>{category.name}</h3>
+      <h3 style={{ margin: '0 0 4px', fontSize: '18px' }}>
+        {category.name}
+        {questionCount !== undefined && (
+          <span style={{ fontWeight: 400, color: '#64748b', fontSize: '15px' }}>
+            {' '}
+            ({questionCount})
+          </span>
+        )}
+      </h3>
       {category.description && (
         <p style={{ margin: 0, fontSize: '14px', color: '#94a3b8' }}>{category.description}</p>
-      )}
-      {questionCount !== undefined && (
-        <p style={{ margin: '8px 0 0', fontSize: '13px', color: '#64748b' }}>
-          Вопросов: {questionCount}
-        </p>
       )}
     </Link>
   );

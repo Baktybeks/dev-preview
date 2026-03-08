@@ -113,10 +113,21 @@ const seedQuestions = async (
         continue;
       }
 
+      const raw = question.difficulty ?? 'junior';
+      const difficultyMap = {
+        junior: 'easy',
+        middle: 'medium',
+        senior: 'hard',
+        easy: 'easy',
+        medium: 'medium',
+        hard: 'hard',
+      };
+      const difficulty = difficultyMap[raw] || 'easy';
+
       const payload = {
         title: question.title,
         answer: question.answer ?? '',
-        difficulty: question.difficulty ?? 'junior',
+        difficulty,
         categoryId,
       };
 
@@ -141,7 +152,7 @@ const main = async () => {
   console.log('🌱 FrontPrep - сидинг данных из JSON\n');
   checkEnvironment();
 
-  const jsonPath = process.argv[2] || 'scripts/seed/frontprep-seed.json';
+  const jsonPath = process.argv[2] || 'scripts/seed/checklist-seed.json';
 
   console.log(`📄 Используем JSON-файл: ${jsonPath}`);
   const data = loadJson(jsonPath);
