@@ -62,6 +62,7 @@ const COLLECTION_SCHEMAS = {
   // Профиль пользователя в БД (связь с Appwrite Auth по userId). Первый пользователь — isAdmin: true.
   users: {
     userId: { type: 'string', required: true, size: 36 },
+    email: { type: 'string', required: false, size: 255 },
     isAdmin: { type: 'boolean', required: true, default: false },
   },
 };

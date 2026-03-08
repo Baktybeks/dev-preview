@@ -1,11 +1,13 @@
 import { create } from 'zustand';
 import type { Models } from 'appwrite';
-import { getCurrentUser, logout as apiLogout } from '@api/authApi';
+import { getCurrentUser, getUserProfile, ensureUserProfile, logout as apiLogout } from '@api/authApi';
+import type { AppUser } from '../types/user';
 
 type User = Models.User;
 
 type AuthState = {
   user: User | null;
+  profile: AppUser | null;
   isLoading: boolean;
   isChecked: boolean;
   setUser: (user: User | null) => void;
@@ -15,6 +17,7 @@ type AuthState = {
 
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
+  profile: null,
   isLoading: false,
   isChecked: false,
 
@@ -24,16 +27,21 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ isLoading: true });
     try {
       const user = await getCurrentUser();
-      set({ user, isChecked: true });
+      if (user?.$id) {
+        const email = (user as { email?: string }).email;
+        await ensureUserProfile(user.$id, email);
+      }
+      const profile = user?.$id ? await getUserProfile(user.$id) : null;
+      set({ user, profile: profile ?? null, isChecked: true });
     } catch {
-      set({ user: null, isChecked: true });
+      set({ user: null, profile: null, isChecked: true });
     } finally {
       set({ isLoading: false });
     }
   },
 
   logout: async () => {
-    set({ user: null });
+    set({ user: null, profile: null });
     try {
       await apiLogout();
     } catch {

@@ -7,7 +7,12 @@ import { CategoriesScreen } from '@screens/Categories/CategoriesScreen';
 import { QuestionsScreen } from '@screens/Questions/QuestionsScreen';
 import { ProfileScreen } from '@screens/Profile/ProfileScreen';
 import { ProgressScreen } from '@screens/Progress/ProgressScreen';
+import { AdminDashboardScreen } from '@screens/Admin/AdminDashboardScreen';
+import { AdminQuestionsScreen } from '@screens/Admin/AdminQuestionsScreen';
+import { AdminUsersScreen } from '@screens/Admin/AdminUsersScreen';
 import { BottomTabLayout } from '@components/layout/BottomTabLayout';
+import { AdminGuard } from '@components/admin/AdminGuard';
+import { AdminLayout } from '@components/admin/AdminLayout';
 import { useAuthStore } from '@store/authStore';
 
 export const App: React.FC = () => {
@@ -29,6 +34,13 @@ export const App: React.FC = () => {
         <Route path="/progress" element={<ProgressScreen />} />
         <Route path="/favorites" element={<Navigate to="/progress" replace />} />
         <Route path="/profile" element={<ProfileScreen />} />
+        <Route path="/admin" element={<AdminGuard />}>
+          <Route element={<AdminLayout />}>
+            <Route index element={<AdminDashboardScreen />} />
+            <Route path="questions" element={<AdminQuestionsScreen />} />
+            <Route path="users" element={<AdminUsersScreen />} />
+          </Route>
+        </Route>
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

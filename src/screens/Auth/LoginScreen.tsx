@@ -63,7 +63,8 @@ export const LoginScreen: React.FC = () => {
       await login(email.trim(), password);
       await loadUser();
       const { user: currentUser } = useAuthStore.getState();
-      if (currentUser?.$id) await ensureUserProfile(currentUser.$id);
+      if (currentUser?.$id) await ensureUserProfile(currentUser.$id, email.trim());
+      await loadUser();
       navigate(from, { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Ошибка входа');

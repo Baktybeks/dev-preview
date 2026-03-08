@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getQuestionsByCategory, getCategories } from '../../api/questionsApi';
+import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { getQuestionsByCategory, getCategories, QUESTIONS_PAGE_SIZE } from '../../api/questionsApi';
 import {
   getQuestionStatuses,
   getFavoriteQuestionIds,
@@ -31,11 +31,39 @@ export const QuestionsScreen: React.FC = () => {
   });
   const category = catData?.documents?.find((c) => c.$id === categoryId);
 
-  const { data, isLoading, error } = useQuery({
+  const {
+    data: infiniteData,
+    isLoading,
+    error,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
     queryKey: ['questions', categoryId],
-    queryFn: () => getQuestionsByCategory(categoryId!),
+    queryFn: ({ pageParam = 0 }) =>
+      getQuestionsByCategory(categoryId!, pageParam, QUESTIONS_PAGE_SIZE),
+    getNextPageParam: (lastPage, allPages) => {
+      const loaded = allPages.reduce((acc, p) => acc + p.documents.length, 0);
+      return loaded < lastPage.total ? loaded : undefined;
+    },
+    initialPageParam: 0,
     enabled: !!categoryId,
   });
+
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!hasNextPage || isFetchingNextPage) return;
+    const el = sentinelRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) fetchNextPage();
+      },
+      { rootMargin: '200px', threshold: 0.1 },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   const { data: statusMap = {} } = useQuery({
     queryKey: ['questionStatuses', userId],
@@ -74,7 +102,8 @@ export const QuestionsScreen: React.FC = () => {
     },
   });
 
-  const rawQuestions = data?.documents ?? [];
+  const rawQuestions = infiniteData?.pages.flatMap((p) => p.documents) ?? [];
+  const totalCount = infiniteData?.pages[0]?.total ?? 0;
   const [statusFilter, setStatusFilter] = useState<
     'all' | 'know' | 'dont_know' | 'unanswered'
   >('all');
@@ -137,7 +166,17 @@ export const QuestionsScreen: React.FC = () => {
     );
   }
 
-  if (!categoryId || rawQuestions.length === 0) {
+  if (!categoryId) {
+    return (
+      <div style={{ padding: '16px' }}>
+        <p>В этой категории пока нет вопросов.</p>
+        <Link to="/categories" style={{ color: '#94a3b8' }}>← Категории</Link>
+      </div>
+    );
+  }
+
+  const hasNoQuestions = !isLoading && totalCount === 0;
+  if (hasNoQuestions) {
     return (
       <div style={{ padding: '16px' }}>
         <p>В этой категории пока нет вопросов.</p>
@@ -203,6 +242,11 @@ export const QuestionsScreen: React.FC = () => {
             onToggleFavorite={() => handleToggleFavorite(q.$id)}
           />
         ))}
+        <div ref={sentinelRef} style={{ minHeight: '24px', padding: '8px', textAlign: 'center' }}>
+          {isFetchingNextPage && (
+            <span style={{ color: '#94a3b8', fontSize: '13px' }}>Загрузка…</span>
+          )}
+        </div>
       </div>
       )}
     </div>
@@ -266,6 +310,18 @@ const AccordionItem: React.FC<AccordionItemProps> = ({
         }}
       >
         <span style={{ flex: 1 }}>{question.title}</span>
+        {question.tags?.length ? (
+          <span
+            style={{
+              fontSize: '11px',
+              color: '#64748b',
+              flexShrink: 0,
+            }}
+          >
+            {question.tags.slice(0, 3).join(', ')}
+            {question.tags.length > 3 ? '…' : ''}
+          </span>
+        ) : null}
         <span
           style={{
             fontSize: '11px',

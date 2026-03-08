@@ -20,15 +20,23 @@ export async function getCategories(): Promise<{
   return { total: res.total, documents: res.rows };
 }
 
+export const QUESTIONS_PAGE_SIZE = 10;
+
 export async function getQuestionsByCategory(
   categoryId: string,
+  offset = 0,
+  limit = QUESTIONS_PAGE_SIZE,
 ): Promise<{ total: number; documents: Question[] }> {
   const tableId = getTableId('questions');
 
   const res = await appwriteTablesDB.listRows<Models.Row & Question>({
     databaseId: appwriteDatabaseId,
     tableId,
-    queries: [Query.equal('categoryId', categoryId)],
+    queries: [
+      Query.equal('categoryId', categoryId),
+      Query.offset(offset),
+      Query.limit(limit),
+    ],
   });
 
   return { total: res.total, documents: res.rows };

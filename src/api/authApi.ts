@@ -21,15 +21,31 @@ export async function getCurrentUser() {
 }
 
 /**
- * Создаёт строку в таблице users, если её ещё нет. Первый пользователь в БД получает isAdmin: true.
+ * Создаёт или обновляет строку в таблице users (email синхронизируется при каждом входе).
+ * Первый пользователь в БД получает isAdmin: true.
  */
-export async function ensureUserProfile(userId: string): Promise<void> {
+export async function ensureUserProfile(userId: string, email?: string): Promise<void> {
   const tableId = getTableId('users');
-  const existing = await appwriteTablesDB.listRows({
+  const existing = await appwriteTablesDB.listRows<Models.Row & { $id: string }>({
     databaseId: appwriteDatabaseId,
     tableId,
     queries: [Query.equal('userId', userId), Query.limit(1)],
   });
+  const row = existing.rows[0];
+
+  if (row && email !== undefined) {
+    try {
+      await appwriteTablesDB.updateRow({
+        databaseId: appwriteDatabaseId,
+        tableId,
+        rowId: row.$id,
+        data: { email },
+      });
+    } catch {
+      // атрибут email может отсутствовать в таблице users — добавьте его в консоли Appwrite
+    }
+    return;
+  }
   if (existing.total > 0) return;
 
   const allUsers = await appwriteTablesDB.listRows({
@@ -43,7 +59,7 @@ export async function ensureUserProfile(userId: string): Promise<void> {
     databaseId: appwriteDatabaseId,
     tableId,
     rowId: ID.unique(),
-    data: { userId, isAdmin },
+    data: { userId, isAdmin, ...(email && { email }) },
   });
 }
 

@@ -61,7 +61,8 @@ export const RegisterScreen: React.FC = () => {
       await register(email.trim(), password, name.trim() || undefined);
       await loadUser();
       const { user } = useAuthStore.getState();
-      if (user?.$id) await ensureUserProfile(user.$id);
+      if (user?.$id) await ensureUserProfile(user.$id, email.trim());
+      await loadUser();
       navigate('/', { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Ошибка регистрации');

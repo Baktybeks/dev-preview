@@ -7,4 +7,6 @@ export interface Question extends Models.Document {
   answer: string;
   difficulty: Difficulty;
   categoryId: string;
+  /** Метки/теги для фильтрации и поиска (например: js, closures, react) */
+  tags?: string[];
 }

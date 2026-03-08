@@ -1,9 +1,12 @@
 import React from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
+import { useAdminNav } from '@hooks/useAdminNav';
 
 import './BottomTabLayout.css';
 
 export const BottomTabLayout: React.FC = () => {
+  const { tabLabel, tabTo } = useAdminNav();
+
   return (
     <div className="app-shell">
       <main className="app-content">
@@ -19,8 +22,12 @@ export const BottomTabLayout: React.FC = () => {
         <NavLink to="/progress" className="tab-link">
           Прогресс
         </NavLink>
-        <NavLink to="/profile" className="tab-link">
-          Профиль
+        <NavLink
+          to={tabTo}
+          end={tabTo === '/profile'}
+          className={({ isActive }) => 'tab-link' + (isActive ? ' active' : '')}
+        >
+          {tabLabel}
         </NavLink>
       </nav>
     </div>

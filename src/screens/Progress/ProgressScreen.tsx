@@ -333,7 +333,6 @@ interface ProgressItemProps {
 
 const ProgressItem: React.FC<ProgressItemProps> = ({
   question,
-  categoryName,
   isOpen,
   onToggle,
   status,
@@ -370,9 +369,6 @@ const ProgressItem: React.FC<ProgressItemProps> = ({
       }}
     >
       <span style={{ flex: 1 }}>{question.title}</span>
-      <span style={{ fontSize: '12px', color: '#64748b', flexShrink: 0 }}>
-        {categoryName}
-      </span>
       <span style={{ fontSize: '11px', color: '#64748b' }}>
         {DIFFICULTY_LABEL[question.difficulty] || question.difficulty}
       </span>
