@@ -3,7 +3,6 @@ import { Outlet, Link, NavLink } from 'react-router-dom';
 
 const layoutStyle: React.CSSProperties = {
   padding: '24px 16px',
-  maxWidth: '900px',
   margin: '0 auto',
 };
 

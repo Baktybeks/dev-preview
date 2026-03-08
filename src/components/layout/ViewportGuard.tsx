@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useAuthStore } from '@store/authStore';
 
 const DESKTOP_MIN_WIDTH_PX = 1025;
 
@@ -39,6 +40,7 @@ type ViewportGuardProps = {
 };
 
 export const ViewportGuard: React.FC<ViewportGuardProps> = ({ children }) => {
+  const profile = useAuthStore((s) => s.profile);
   const [isDesktop, setIsDesktop] = useState(false);
   const [mounted, setMounted] = useState(false);
 
@@ -55,7 +57,8 @@ export const ViewportGuard: React.FC<ViewportGuardProps> = ({ children }) => {
     return <>{children}</>;
   }
 
-  if (isDesktop) {
+  const isAdmin = Boolean(profile?.isAdmin);
+  if (isDesktop && !isAdmin) {
     return (
       <div style={wrapperStyle}>
         <div style={iconStyle} aria-hidden>📱</div>
