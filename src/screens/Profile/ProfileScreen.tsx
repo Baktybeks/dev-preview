@@ -44,6 +44,27 @@ const linkStyle: React.CSSProperties = {
 export const ProfileScreen: React.FC = () => {
   const { user, logout } = useAuthStore();
 
+  const { data: statusMap = {} } = useQuery({
+    queryKey: ['questionStatuses', user?.$id],
+    queryFn: () => getQuestionStatuses(user!.$id),
+    enabled: !!user?.$id,
+  });
+  const { data: favoriteIds = [] } = useQuery({
+    queryKey: ['favoriteIds', user?.$id],
+    queryFn: () => getFavoriteQuestionIds(user!.$id),
+    enabled: !!user?.$id,
+  });
+  const { data: totalQuestions = 0 } = useQuery({
+    queryKey: ['totalQuestionsCount'],
+    queryFn: getTotalQuestionsCount,
+  });
+
+  const statuses = Object.values(statusMap);
+  const knowCount = statuses.filter((s) => s === 'know').length;
+  const dontKnowCount = statuses.filter((s) => s === 'dont_know').length;
+  const progressPercent =
+    totalQuestions > 0 ? Math.round((knowCount / totalQuestions) * 100) : 0;
+
   const handleLogout = async () => {
     await logout();
   };
@@ -70,29 +91,8 @@ export const ProfileScreen: React.FC = () => {
     );
   }
 
-  const { data: statusMap = {} } = useQuery({
-    queryKey: ['questionStatuses', user.$id],
-    queryFn: () => getQuestionStatuses(user.$id),
-    enabled: !!user?.$id,
-  });
-  const { data: favoriteIds = [] } = useQuery({
-    queryKey: ['favoriteIds', user.$id],
-    queryFn: () => getFavoriteQuestionIds(user.$id),
-    enabled: !!user?.$id,
-  });
-  const { data: totalQuestions = 0 } = useQuery({
-    queryKey: ['totalQuestionsCount'],
-    queryFn: getTotalQuestionsCount,
-  });
-
-  const statuses = Object.values(statusMap);
-  const knowCount = statuses.filter((s) => s === 'know').length;
-  const dontKnowCount = statuses.filter((s) => s === 'dont_know').length;
-  const progressPercent =
-    totalQuestions > 0 ? Math.round((knowCount / totalQuestions) * 100) : 0;
-
   return (
-    <div style={sectionStyle}>
+    <div className="content-section" style={sectionStyle}>
       <h1 style={{ marginBottom: '20px', fontSize: '24px' }}>Профиль</h1>
 
       {/* Статистика */}

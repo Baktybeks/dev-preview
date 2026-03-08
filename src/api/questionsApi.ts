@@ -17,9 +17,6 @@ export async function getCategories(): Promise<{
     queries: [Query.orderAsc('order')],
   });
 
-  // eslint-disable-next-line no-console
-  console.log('📡 getCategories result:', res);
-
   return { total: res.total, documents: res.rows };
 }
 
@@ -33,9 +30,6 @@ export async function getQuestionsByCategory(
     tableId,
     queries: [Query.equal('categoryId', categoryId)],
   });
-
-  // eslint-disable-next-line no-console
-  console.log('📡 getQuestionsByCategory result:', res);
 
   return { total: res.total, documents: res.rows };
 }
