@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   searchQuestions,
   createQuestion,
@@ -7,6 +7,7 @@ import {
   deleteQuestion,
   importQuestions,
   getCategoriesForAdmin,
+  ADMIN_QUESTIONS_PAGE_SIZE,
 } from '@api/adminApi';
 import { getCategories } from '@api/questionsApi';
 import type { Question } from '../../types/question';
@@ -40,17 +41,107 @@ const btnStyle: React.CSSProperties = {
   cursor: 'pointer',
 };
 
-const JSON_HINT = `Формат (поддерживаются оба варианта полей):
-[
+/** Шаблон структуры для импорта (проверка по нему) */
+const JSON_TEMPLATE = `[
   {
-    "title": "Текст вопроса?",
-    "answer": "Ответ...",
-    "category": "имя или slug категории",
-    "categorySlug": "javascript-core",
-    "tags": ["tag1"],
+    "title": string,
+    "answer": string,
+    "category": string,
+    "categorySlug": string,
+    "tags": [string],
     "difficulty": "easy | medium | hard"
   }
 ]`;
+
+type FieldSchema =
+  | { type: 'string'; nonEmpty?: boolean }
+  | { type: 'string[]' }
+  | { type: 'enum'; values: string[] };
+
+/** Парсит шаблон и возвращает схему полей объекта (ключ → тип) или ошибку */
+function parseTemplateSchema(
+  template: string,
+): { schema: Record<string, FieldSchema> } | { error: string } {
+  const schema: Record<string, FieldSchema> = {};
+  const objMatch = template.match(/\{\s*([\s\S]*?)\s*\}/);
+  if (!objMatch) {
+    return { error: 'В шаблоне должен быть один объект в формате { "key": type, ... }' };
+  }
+  const inner = objMatch[1];
+  const lineRegex = /"([^"]+)"\s*:\s*("[^"]*"|[^,\n]+)/g;
+  let m: RegExpExecArray | null;
+  while ((m = lineRegex.exec(inner)) !== null) {
+    const key = m[1].trim();
+    let value = m[2].trim().replace(/,\s*$/, '');
+    if (value.startsWith('"') && value.endsWith('"')) {
+      value = value.slice(1, -1).trim();
+      if (value.includes('|')) {
+        schema[key] = {
+          type: 'enum',
+          values: value.split('|').map((s) => s.trim().toLowerCase()),
+        };
+      } else {
+        schema[key] = { type: 'string' };
+      }
+    } else if (value === '[string]' || value === 'string[]') {
+      schema[key] = { type: 'string[]' };
+    } else if (value === 'string') {
+      schema[key] = { type: 'string' };
+    } else {
+      schema[key] = { type: 'string' };
+    }
+  }
+  if (Object.keys(schema).length === 0) {
+    return { error: 'В шаблоне не найдено полей вида "key": type' };
+  }
+  return { schema };
+}
+
+function validateImportAgainstSchema(
+  parsed: unknown,
+  schema: Record<string, FieldSchema>,
+): string | null {
+  if (!Array.isArray(parsed)) return 'Ожидается массив объектов';
+  const keys = Object.keys(schema);
+  for (let i = 0; i < parsed.length; i++) {
+    const item = parsed[i];
+    if (item === null || typeof item !== 'object' || Array.isArray(item)) {
+      return `Запись ${i + 1}: ожидается объект`;
+    }
+    const obj = item as Record<string, unknown>;
+    for (const key of keys) {
+      const field = schema[key];
+      const value = obj[key];
+      if (field.type === 'string') {
+        if (value === undefined || value === null) {
+          return `Запись ${i + 1}: отсутствует поле "${key}"`;
+        }
+        if (typeof value !== 'string') {
+          return `Запись ${i + 1}: поле "${key}" должно быть строкой`;
+        }
+        if (field.nonEmpty !== false && !value.trim()) {
+          return `Запись ${i + 1}: поле "${key}" не должно быть пустым`;
+        }
+      } else if (field.type === 'string[]') {
+        if (value === undefined || value === null) {
+          return `Запись ${i + 1}: отсутствует поле "${key}"`;
+        }
+        if (!Array.isArray(value) || value.some((t: unknown) => typeof t !== 'string')) {
+          return `Запись ${i + 1}: поле "${key}" должно быть массивом строк`;
+        }
+      } else if (field.type === 'enum') {
+        if (value === undefined || value === null) {
+          return `Запись ${i + 1}: отсутствует поле "${key}"`;
+        }
+        const s = String(value).toLowerCase();
+        if (!field.values.includes(s)) {
+          return `Запись ${i + 1}: поле "${key}" должно быть одним из: ${field.values.join(', ')}`;
+        }
+      }
+    }
+  }
+  return null;
+}
 
 export const AdminQuestionsScreen: React.FC = () => {
   const queryClient = useQueryClient();
@@ -65,6 +156,8 @@ export const AdminQuestionsScreen: React.FC = () => {
   const [importError, setImportError] = useState('');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false);
+  const [importAccordionOpen, setImportAccordionOpen] = useState(false);
+  const [importTemplate, setImportTemplate] = useState(JSON_TEMPLATE);
 
   const { data: categoriesData } = useQuery({
     queryKey: ['categories'],
@@ -85,18 +178,46 @@ export const AdminQuestionsScreen: React.FC = () => {
     return m;
   }, [adminCategories]);
 
-  const { data: listData, isLoading } = useQuery({
+  const {
+    data: infiniteData,
+    isLoading,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
     queryKey: ['adminQuestions', search, categoryFilter, difficultyFilter],
-    queryFn: () =>
+    queryFn: ({ pageParam = 0 }) =>
       searchQuestions({
         query: search || undefined,
         categoryId: categoryFilter || undefined,
         difficulty: difficultyFilter || undefined,
-        limit: 100,
+        offset: pageParam,
+        limit: ADMIN_QUESTIONS_PAGE_SIZE,
       }),
+    getNextPageParam: (lastPage, allPages) => {
+      const loaded = allPages.reduce((acc, p) => acc + p.documents.length, 0);
+      return loaded < lastPage.total ? loaded : undefined;
+    },
+    initialPageParam: 0,
   });
-  const questions = listData?.documents ?? [];
-  const total = listData?.total ?? 0;
+
+  const questions = infiniteData?.pages.flatMap((p) => p.documents) ?? [];
+  const total = infiniteData?.pages[0]?.total ?? 0;
+
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!hasNextPage || isFetchingNextPage) return;
+    const el = sentinelRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) fetchNextPage();
+      },
+      { rootMargin: '200px', threshold: 0.1 },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   const createMutation = useMutation({
     mutationFn: createQuestion,
@@ -160,13 +281,19 @@ export const AdminQuestionsScreen: React.FC = () => {
   const handleImportParse = () => {
     setImportError('');
     setImportPreview(null);
+    const parsedSchema = parseTemplateSchema(importTemplate);
+    if ('error' in parsedSchema) {
+      setImportError(`Шаблон: ${parsedSchema.error}`);
+      return;
+    }
     try {
       const parsed = JSON.parse(importJson) as unknown;
-      if (!Array.isArray(parsed)) {
-        setImportError('Ожидается массив объектов');
+      const validationError = validateImportAgainstSchema(parsed, parsedSchema.schema);
+      if (validationError) {
+        setImportError(validationError);
         return;
       }
-      setImportPreview(parsed);
+      setImportPreview(parsed as Record<string, unknown>[]);
     } catch (e) {
       setImportError(e instanceof Error ? e.message : 'Невалидный JSON');
     }
@@ -241,50 +368,102 @@ export const AdminQuestionsScreen: React.FC = () => {
       )}
 
       <div style={cardStyle}>
-        <h3 style={{ margin: '0 0 12px', fontSize: '14px' }}>Импорт из JSON</h3>
-        <p style={{ margin: '0 0 8px', fontSize: '12px', color: '#64748b', whiteSpace: 'pre-wrap' }}>
-          {JSON_HINT}
-        </p>
-        <textarea
-          value={importJson}
-          onChange={(e) => setImportJson(e.target.value)}
-          placeholder="Вставьте JSON..."
-          rows={6}
-          style={{ ...inputStyle, marginBottom: '8px', fontFamily: 'monospace' }}
-        />
-        {importError && (
-          <p style={{ margin: '0 0 8px', color: '#f87171', fontSize: '13px' }}>{importError}</p>
-        )}
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-          <button type="button" style={btnStyle} onClick={handleImportParse}>
-            Проверить и превью
-          </button>
-          {importPreview !== null && (
-            <>
-              <span style={{ color: '#94a3b8', fontSize: '13px' }}>
-                Найдено записей: {importPreview.length}
-              </span>
-              <button
-                type="button"
-                style={{ ...btnStyle, color: '#22c55e' }}
-                onClick={() =>
-                  importMutation.mutate(
-                    importPreview as Array<{
-                      question: string;
-                      answer: string;
-                      category: string;
-                      tags?: string[];
-                      difficulty?: string;
-                    }>,
-                  )
-                }
-                disabled={importMutation.isPending}
-              >
-                Импортировать
+        <button
+          type="button"
+          onClick={() => setImportAccordionOpen((o) => !o)}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            width: '100%',
+            padding: 0,
+            border: 'none',
+            background: 'none',
+            color: '#e2e8f0',
+            fontSize: '14px',
+            cursor: 'pointer',
+            textAlign: 'left',
+          }}
+        >
+          <span style={{ fontWeight: 600 }}>Импорт из JSON</span>
+          <span style={{ color: '#94a3b8', fontSize: '18px' }}>
+            {importAccordionOpen ? '−' : '+'}
+          </span>
+        </button>
+        {importAccordionOpen && (
+          <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid rgba(148, 163, 184, 0.2)' }}>
+            <div style={{ marginBottom: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                <span style={{ fontSize: '12px', color: '#94a3b8', fontWeight: 600 }}>
+                  Шаблон
+                </span>
+                <button
+                  type="button"
+                  style={{ ...btnStyle, fontSize: '12px', padding: '4px 8px' }}
+                  onClick={() => setImportTemplate(JSON_TEMPLATE)}
+                >
+                  Сбросить
+                </button>
+              </div>
+              <textarea
+                value={importTemplate}
+                onChange={(e) => setImportTemplate(e.target.value)}
+                rows={10}
+                style={{
+                  ...inputStyle,
+                  fontFamily: 'monospace',
+                  fontSize: '12px',
+                  resize: 'vertical',
+                  minHeight: '120px',
+                }}
+                spellCheck={false}
+              />
+            </div>
+            <p style={{ margin: '0 0 8px', fontSize: '12px', color: '#94a3b8', fontWeight: 600 }}>
+              Импорт из JSON
+            </p>
+            <textarea
+              value={importJson}
+              onChange={(e) => setImportJson(e.target.value)}
+              placeholder="Вставьте JSON..."
+              rows={6}
+              style={{ ...inputStyle, marginBottom: '8px', fontFamily: 'monospace' }}
+            />
+            {importError && (
+              <p style={{ margin: '0 0 8px', color: '#f87171', fontSize: '13px' }}>{importError}</p>
+            )}
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              <button type="button" style={btnStyle} onClick={handleImportParse}>
+                Проверить и превью
               </button>
-            </>
-          )}
-        </div>
+              {importPreview !== null && (
+                <>
+                  <span style={{ color: '#94a3b8', fontSize: '13px' }}>
+                    Найдено записей: {importPreview.length}
+                  </span>
+                  <button
+                    type="button"
+                    style={{ ...btnStyle, color: '#22c55e' }}
+                    onClick={() =>
+                      importMutation.mutate(
+                        importPreview as Array<{
+                          question: string;
+                          answer: string;
+                          category: string;
+                          tags?: string[];
+                          difficulty?: string;
+                        }>,
+                      )
+                    }
+                    disabled={importMutation.isPending}
+                  >
+                    Импортировать
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       <div style={cardStyle}>
@@ -408,6 +587,12 @@ export const AdminQuestionsScreen: React.FC = () => {
               </tbody>
             </table>
           </div>
+        )}
+        <div ref={sentinelRef} style={{ height: 1, marginTop: 8 }} aria-hidden />
+        {isFetchingNextPage && (
+          <p style={{ margin: '8px 0 0', color: '#94a3b8', fontSize: '13px' }}>
+            Загрузка…
+          </p>
         )}
       </div>
     </div>

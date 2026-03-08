@@ -13,6 +13,9 @@ const FAVORITES_TABLE = 'favorites';
 
 const MAX_LIMIT = 500;
 
+/** Размер страницы для списка вопросов в админке (infinite scroll) */
+export const ADMIN_QUESTIONS_PAGE_SIZE = 10;
+
 /** Общее количество пользователей */
 export async function getTotalUsersCount(): Promise<number> {
   const res = await appwriteTablesDB.listRows({
@@ -108,6 +111,22 @@ export async function searchQuestions(params: {
 }): Promise<{ total: number; documents: (Models.Row & Question)[] }> {
   const { query, categoryId, difficulty, offset = 0, limit = 100 } = params;
   const tableId = getTableId(QUESTIONS_TABLE);
+  const q = query?.trim().toLowerCase();
+  if (!q) {
+    const queries: string[] = [
+      Query.offset(offset),
+      Query.limit(limit),
+      Query.orderDesc('$createdAt'),
+    ];
+    if (categoryId) queries.push(Query.equal('categoryId', categoryId));
+    if (difficulty) queries.push(Query.equal('difficulty', difficulty));
+    const res = await appwriteTablesDB.listRows<Models.Row & Question>({
+      databaseId: appwriteDatabaseId,
+      tableId,
+      queries,
+    });
+    return { total: res.total, documents: res.rows };
+  }
   const queries: string[] = [
     Query.offset(0),
     Query.limit(MAX_LIMIT),
@@ -120,14 +139,11 @@ export async function searchQuestions(params: {
     tableId,
     queries,
   });
-  let rows = res.rows;
-  const q = query?.trim().toLowerCase();
-  if (q) {
-    rows = rows.filter(
-      (r) => r.title.toLowerCase().includes(q) || r.answer.toLowerCase().includes(q),
-    );
-  }
-  const total = q ? rows.length : res.total;
+  const rows = res.rows.filter(
+    (r) =>
+      r.title.toLowerCase().includes(q) || r.answer.toLowerCase().includes(q),
+  );
+  const total = rows.length;
   const paginated = rows.slice(offset, offset + limit);
   return { total, documents: paginated };
 }
