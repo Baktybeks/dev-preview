@@ -27,16 +27,14 @@ export async function ensureUserProfile(userId: string): Promise<void> {
   const existing = await appwriteDatabases.listDocuments(
     appwriteDatabaseId,
     collectionId,
-    [Query.equal('userId', userId)],
-    1,
+    [Query.equal('userId', userId), Query.limit(1)],
   );
   if (existing.total > 0) return;
 
   const allUsers = await appwriteDatabases.listDocuments(
     appwriteDatabaseId,
     collectionId,
-    [],
-    1,
+    [Query.limit(1)],
   );
   const isAdmin = allUsers.total === 0;
 
@@ -54,8 +52,7 @@ export async function getUserProfile(userId: string): Promise<AppUser | null> {
   const res = await appwriteDatabases.listDocuments<AppUser>(
     appwriteDatabaseId,
     collectionId,
-    [Query.equal('userId', userId)],
-    1,
+    [Query.equal('userId', userId), Query.limit(1)],
   );
   return res.documents[0] ?? null;
 }

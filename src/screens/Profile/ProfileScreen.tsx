@@ -8,8 +8,6 @@ import { getTotalQuestionsCount } from '@api/questionsApi';
 
 const sectionStyle: React.CSSProperties = {
   padding: '24px 16px',
-  maxWidth: '400px',
-  margin: '0 auto',
 };
 
 const cardStyle: React.CSSProperties = {

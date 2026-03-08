@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getCategories, getQuestionsByIds } from '../../api/questionsApi';
+import { useQuery, useQueries, useMutation, useQueryClient } from '@tanstack/react-query';
+import { getCategories, getQuestionsByIds, getQuestionCountByCategory } from '../../api/questionsApi';
 import {
   getFavoriteQuestionIds,
   getQuestionStatuses,
@@ -157,7 +157,7 @@ export const ProgressScreen: React.FC = () => {
 
   if (!userId) {
     return (
-      <div style={{ padding: '24px 16px', maxWidth: '400px', margin: '0 auto' }}>
+      <div style={{ padding: '24px 16px' }}>
         <h1 style={{ marginBottom: '16px', fontSize: '24px' }}>Прогресс</h1>
         <div
           style={{
@@ -216,6 +216,24 @@ export const ProgressScreen: React.FC = () => {
         : dontKnowQuestions;
   const groups = groupByCategory(currentQuestions);
 
+  const categoryIds = useMemo(
+    () => groups.map((g) => g.categoryId),
+    [groups],
+  );
+  const categoryCountQueries = useQueries({
+    queries: categoryIds.map((cid) => ({
+      queryKey: ['questionCountByCategory', cid],
+      queryFn: () => getQuestionCountByCategory(cid),
+    })),
+  });
+  const categoryTotalMap = useMemo(() => {
+    const m: Record<string, number> = {};
+    categoryIds.forEach((cid, i) => {
+      m[cid] = categoryCountQueries[i]?.data ?? 0;
+    });
+    return m;
+  }, [categoryIds, categoryCountQueries]);
+
   const emptyMessage =
     section === 'favorites'
       ? 'Пока нет вопросов в избранном. Добавляйте их на странице категорий (☆ В избранное).'
@@ -224,7 +242,7 @@ export const ProgressScreen: React.FC = () => {
         : 'Нет вопросов, отмеченных как «Не знаю».';
 
   return (
-    <div style={{ padding: '16px', maxWidth: '600px', margin: '0 auto' }}>
+    <div style={{ padding: '16px' }}>
       {modal}
       <h1 style={{ marginBottom: '16px', fontSize: '24px' }}>Прогресс</h1>
       <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', flexWrap: 'wrap' }}>
@@ -257,6 +275,12 @@ export const ProgressScreen: React.FC = () => {
                   }}
                 >
                   {getCategoryName(cid)}
+                  {section === 'know' && (
+                    <span style={{ fontWeight: 400, color: '#64748b' }}>
+                      {' '}
+                      ({qList.length}/{categoryTotalMap[cid] ?? '…'})
+                    </span>
+                  )}
                 </h2>
                 <Link
                   to={`/categories/${cid}/questions`}

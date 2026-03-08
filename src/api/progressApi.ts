@@ -1,4 +1,5 @@
 import { ID, Query } from 'appwrite';
+import type { Models } from 'appwrite';
 import { appwriteDatabases, appwriteDatabaseId } from './appwriteClient';
 import { getCollectionId } from '../constants/appwriteConfig';
 
@@ -12,16 +13,16 @@ export async function getQuestionStatuses(
   userId: string,
 ): Promise<Record<string, QuestionStatus>> {
   const collectionId = getCollectionId(STATUS_COLLECTION);
-  const res = await appwriteDatabases.listDocuments(
+  const res = await appwriteDatabases.listDocuments<
+    Models.Document & { questionId: string; status: QuestionStatus }
+  >(
     appwriteDatabaseId,
     collectionId,
-    [Query.equal('userId', userId)],
-    500,
+    [Query.equal('userId', userId), Query.limit(500)],
   );
   const map: Record<string, QuestionStatus> = {};
   for (const doc of res.documents) {
-    const d = doc as { questionId: string; status: QuestionStatus };
-    map[d.questionId] = d.status;
+    map[doc.questionId] = doc.status;
   }
   return map;
 }
@@ -39,8 +40,8 @@ export async function setQuestionStatus(
     [
       Query.equal('userId', userId),
       Query.equal('questionId', questionId),
+      Query.limit(1),
     ],
-    1,
   );
   if (existing.documents.length > 0) {
     await appwriteDatabases.updateDocument(
@@ -64,13 +65,14 @@ export async function getFavoriteQuestionIds(
   userId: string,
 ): Promise<string[]> {
   const collectionId = getCollectionId(FAVORITES_COLLECTION);
-  const res = await appwriteDatabases.listDocuments(
+  const res = await appwriteDatabases.listDocuments<
+    Models.Document & { questionId: string }
+  >(
     appwriteDatabaseId,
     collectionId,
-    [Query.equal('userId', userId)],
-    500,
+    [Query.equal('userId', userId), Query.limit(500)],
   );
-  return (res.documents as { questionId: string }[]).map((d) => d.questionId);
+  return res.documents.map((d) => d.questionId);
 }
 
 /** Добавить вопрос в избранное */
@@ -85,8 +87,8 @@ export async function addFavorite(
     [
       Query.equal('userId', userId),
       Query.equal('questionId', questionId),
+      Query.limit(1),
     ],
-    1,
   );
   if (existing.documents.length > 0) return;
   await appwriteDatabases.createDocument(
@@ -109,8 +111,8 @@ export async function removeFavorite(
     [
       Query.equal('userId', userId),
       Query.equal('questionId', questionId),
+      Query.limit(1),
     ],
-    1,
   );
   if (existing.documents.length === 0) return;
   await appwriteDatabases.deleteDocument(

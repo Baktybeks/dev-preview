@@ -95,7 +95,6 @@ export const QuestionsScreen: React.FC = () => {
         ? sortedQuestions.filter(isUnanswered)
         : sortedQuestions.filter((q) => statusMap[q.$id] === statusFilter);
 
-  const totalCount = data?.total ?? sortedQuestions.length;
   const countAll = sortedQuestions.length;
   const countKnow = sortedQuestions.filter((q) => statusMap[q.$id] === 'know').length;
   const countDontKnow = sortedQuestions.filter((q) => statusMap[q.$id] === 'dont_know').length;
@@ -178,9 +177,6 @@ export const QuestionsScreen: React.FC = () => {
       {category && (
         <h1 style={{ margin: '0 0 16px', fontSize: '20px' }}>
           {category.name}
-          <span style={{ fontWeight: 400, color: '#64748b', fontSize: '16px' }}>
-            {' '}({totalCount})
-          </span>
         </h1>
       )}
       <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>

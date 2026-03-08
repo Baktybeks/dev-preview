@@ -57,8 +57,20 @@ export async function getTotalQuestionsCount(): Promise<number> {
   const res = await appwriteDatabases.listDocuments(
     appwriteDatabaseId,
     collectionId,
-    [],
-    1,
+    [Query.limit(1)],
+  );
+  return res.total;
+}
+
+/** Количество вопросов в категории (только total, без загрузки документов). */
+export async function getQuestionCountByCategory(
+  categoryId: string,
+): Promise<number> {
+  const collectionId = getCollectionId('questions');
+  const res = await appwriteDatabases.listDocuments(
+    appwriteDatabaseId,
+    collectionId,
+    [Query.equal('categoryId', categoryId), Query.limit(1)],
   );
   return res.total;
 }

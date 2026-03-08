@@ -5,8 +5,6 @@ import { useAuthStore } from '@store/authStore';
 
 const formStyle: React.CSSProperties = {
   padding: '24px 16px',
-  maxWidth: '400px',
-  margin: '0 auto',
 };
 
 const inputStyle: React.CSSProperties = {

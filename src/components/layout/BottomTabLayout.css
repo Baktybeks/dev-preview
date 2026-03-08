@@ -9,12 +9,18 @@
 .app-content {
   flex: 1;
   padding: 16px;
+  padding-bottom: 60px;
 }
 
 .bottom-tabs {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
   display: flex;
   justify-content: space-around;
   padding: 8px 4px 12px;
+  padding-bottom: max(12px, env(safe-area-inset-bottom));
   border-top: 1px solid rgba(148, 163, 184, 0.3);
   background-color: #020617;
 }
