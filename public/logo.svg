@@ -1,0 +1,41 @@
+<svg width="220" height="220" viewBox="0 0 220 220" xmlns="http://www.w3.org/2000/svg">
+  <!-- Speech bubble background -->
+  <path d="M30 110
+           A80 80 0 1 1 190 110
+           L170 130
+           L180 165
+           L140 145
+           A80 80 0 0 1 30 110" fill="#0f172a"></path>
+
+  <!-- Blue part -->
+  <path d="M30 110
+           A80 80 0 0 1 110 30
+           A80 80 0 0 1 110 190
+           A80 80 0 0 1 30 110" fill="#0284c7" opacity="0.85"></path>
+
+  <!-- Orange part -->
+  <path d="M110 30
+           A80 80 0 0 1 190 110
+           L170 130
+           L180 165
+           L140 145
+           A80 80 0 0 1 110 30" fill="#f97316" opacity="0.9"></path>
+
+  <!-- Robot head -->
+  <rect x="75" y="70" width="70" height="55" rx="16" fill="#e5e7eb"></rect>
+  
+  <!-- Robot screen -->
+  <rect x="85" y="80" width="50" height="30" rx="8" fill="#0f172a"></rect>
+
+  <!-- Code eyes -->
+  <text x="110" y="100" font-size="14" text-anchor="middle" fill="#22d3ee" font-family="monospace">
+    &lt;/&gt;
+  </text>
+
+  <!-- Antenna -->
+  <line x1="110" y1="70" x2="110" y2="55" stroke="#94a3b8" stroke-width="3"></line>
+  <circle cx="110" cy="50" r="5" fill="#22d3ee"></circle>
+
+  <!-- Robot body -->
+  <rect x="90" y="125" width="40" height="25" rx="10" fill="#cbd5f5"></rect>
+</svg>

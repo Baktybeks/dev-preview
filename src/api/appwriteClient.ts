@@ -1,4 +1,4 @@
-import { Client, Account, Databases } from 'appwrite';
+import { Client, Account, TablesDB } from 'appwrite';
 import { appwriteConfig } from '../constants/appwriteConfig';
 
 const client = new Client()
@@ -6,6 +6,6 @@ const client = new Client()
   .setProject(appwriteConfig.projectId);
 
 export const appwriteAccount = new Account(client);
-export const appwriteDatabases = new Databases(client);
+export const appwriteTablesDB = new TablesDB(client);
 export const appwriteDatabaseId = appwriteConfig.databaseId;
 

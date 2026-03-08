@@ -33,10 +33,11 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   logout: async () => {
+    set({ user: null });
     try {
       await apiLogout();
-    } finally {
-      set({ user: null });
+    } catch {
+      // сессия уже недействительна с точки зрения UI
     }
   },
 }));

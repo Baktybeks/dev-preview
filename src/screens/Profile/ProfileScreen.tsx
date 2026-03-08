@@ -50,7 +50,7 @@ export const ProfileScreen: React.FC = () => {
 
   if (!user) {
     return (
-      <div style={sectionStyle}>
+      <div className="content-section" style={sectionStyle}>
         <h1 style={{ marginBottom: '20px', fontSize: '24px' }}>Профиль</h1>
         <div style={cardStyle}>
           <p style={{ margin: '0 0 16px', color: '#94a3b8' }}>

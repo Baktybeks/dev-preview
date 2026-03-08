@@ -169,7 +169,7 @@ export const QuestionsScreen: React.FC = () => {
   );
 
   return (
-    <div style={{ padding: '16px', maxWidth: '600px' }}>
+    <div style={{ padding: '16px'}}>
       {modal}
       <Link to="/categories" style={{ color: '#94a3b8', marginBottom: '16px', display: 'block' }}>
         ← Категории

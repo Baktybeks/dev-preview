@@ -1,77 +1,78 @@
 import { Query } from 'appwrite';
-import { appwriteDatabases, appwriteDatabaseId } from './appwriteClient';
+import type { Models } from 'appwrite';
+import { appwriteTablesDB, appwriteDatabaseId } from './appwriteClient';
 import type { Category } from '../types/category';
 import type { Question } from '../types/question';
-import { getCollectionId } from '../constants/appwriteConfig';
+import { getTableId } from '../constants/appwriteConfig';
 
 export async function getCategories(): Promise<{
   total: number;
   documents: Category[];
 }> {
-  const collectionId = getCollectionId('categories');
+  const tableId = getTableId('categories');
 
-  const res = await appwriteDatabases.listDocuments<Category>(
-    appwriteDatabaseId,
-    collectionId,
-    [Query.orderAsc('order')],
-  );
+  const res = await appwriteTablesDB.listRows<Models.Row & Category>({
+    databaseId: appwriteDatabaseId,
+    tableId,
+    queries: [Query.orderAsc('order')],
+  });
 
   // eslint-disable-next-line no-console
   console.log('📡 getCategories result:', res);
 
-  return { total: res.total, documents: res.documents };
+  return { total: res.total, documents: res.rows };
 }
 
 export async function getQuestionsByCategory(
   categoryId: string,
 ): Promise<{ total: number; documents: Question[] }> {
-  const collectionId = getCollectionId('questions');
+  const tableId = getTableId('questions');
 
-  const res = await appwriteDatabases.listDocuments<Question>(
-    appwriteDatabaseId,
-    collectionId,
-    [Query.equal('categoryId', categoryId)],
-  );
+  const res = await appwriteTablesDB.listRows<Models.Row & Question>({
+    databaseId: appwriteDatabaseId,
+    tableId,
+    queries: [Query.equal('categoryId', categoryId)],
+  });
 
   // eslint-disable-next-line no-console
   console.log('📡 getQuestionsByCategory result:', res);
 
-  return { total: res.total, documents: res.documents };
+  return { total: res.total, documents: res.rows };
 }
 
 export async function getQuestionsByIds(
   questionIds: string[],
 ): Promise<Question[]> {
   if (questionIds.length === 0) return [];
-  const collectionId = getCollectionId('questions');
-  const res = await appwriteDatabases.listDocuments<Question>(
-    appwriteDatabaseId,
-    collectionId,
-    [Query.equal('$id', questionIds)],
-  );
-  return res.documents;
+  const tableId = getTableId('questions');
+  const res = await appwriteTablesDB.listRows<Models.Row & Question>({
+    databaseId: appwriteDatabaseId,
+    tableId,
+    queries: [Query.equal('$id', questionIds)],
+  });
+  return res.rows;
 }
 
 export async function getTotalQuestionsCount(): Promise<number> {
-  const collectionId = getCollectionId('questions');
-  const res = await appwriteDatabases.listDocuments(
-    appwriteDatabaseId,
-    collectionId,
-    [Query.limit(1)],
-  );
+  const tableId = getTableId('questions');
+  const res = await appwriteTablesDB.listRows({
+    databaseId: appwriteDatabaseId,
+    tableId,
+    queries: [Query.limit(1)],
+  });
   return res.total;
 }
 
-/** Количество вопросов в категории (только total, без загрузки документов). */
+/** Количество вопросов в категории (только total, без загрузки строк). */
 export async function getQuestionCountByCategory(
   categoryId: string,
 ): Promise<number> {
-  const collectionId = getCollectionId('questions');
-  const res = await appwriteDatabases.listDocuments(
-    appwriteDatabaseId,
-    collectionId,
-    [Query.equal('categoryId', categoryId), Query.limit(1)],
-  );
+  const tableId = getTableId('questions');
+  const res = await appwriteTablesDB.listRows({
+    databaseId: appwriteDatabaseId,
+    tableId,
+    queries: [Query.equal('categoryId', categoryId), Query.limit(1)],
+  });
   return res.total;
 }
 

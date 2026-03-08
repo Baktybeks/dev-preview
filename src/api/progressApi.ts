@@ -1,7 +1,7 @@
 import { ID, Query } from 'appwrite';
 import type { Models } from 'appwrite';
-import { appwriteDatabases, appwriteDatabaseId } from './appwriteClient';
-import { getCollectionId } from '../constants/appwriteConfig';
+import { appwriteTablesDB, appwriteDatabaseId } from './appwriteClient';
+import { getTableId } from '../constants/appwriteConfig';
 
 export type QuestionStatus = 'know' | 'dont_know' | 'unanswered';
 
@@ -12,17 +12,17 @@ const FAVORITES_COLLECTION = 'favorites';
 export async function getQuestionStatuses(
   userId: string,
 ): Promise<Record<string, QuestionStatus>> {
-  const collectionId = getCollectionId(STATUS_COLLECTION);
-  const res = await appwriteDatabases.listDocuments<
-    Models.Document & { questionId: string; status: QuestionStatus }
-  >(
-    appwriteDatabaseId,
-    collectionId,
-    [Query.equal('userId', userId), Query.limit(500)],
-  );
+  const tableId = getTableId(STATUS_COLLECTION);
+  const res = await appwriteTablesDB.listRows<
+    Models.Row & { questionId: string; status: QuestionStatus }
+  >({
+    databaseId: appwriteDatabaseId,
+    tableId,
+    queries: [Query.equal('userId', userId), Query.limit(500)],
+  });
   const map: Record<string, QuestionStatus> = {};
-  for (const doc of res.documents) {
-    map[doc.questionId] = doc.status;
+  for (const row of res.rows) {
+    map[row.questionId] = row.status;
   }
   return map;
 }
@@ -33,30 +33,30 @@ export async function setQuestionStatus(
   questionId: string,
   status: QuestionStatus,
 ): Promise<void> {
-  const collectionId = getCollectionId(STATUS_COLLECTION);
-  const existing = await appwriteDatabases.listDocuments(
-    appwriteDatabaseId,
-    collectionId,
-    [
+  const tableId = getTableId(STATUS_COLLECTION);
+  const existing = await appwriteTablesDB.listRows({
+    databaseId: appwriteDatabaseId,
+    tableId,
+    queries: [
       Query.equal('userId', userId),
       Query.equal('questionId', questionId),
       Query.limit(1),
     ],
-  );
-  if (existing.documents.length > 0) {
-    await appwriteDatabases.updateDocument(
-      appwriteDatabaseId,
-      collectionId,
-      existing.documents[0].$id,
-      { status },
-    );
+  });
+  if (existing.rows.length > 0) {
+    await appwriteTablesDB.updateRow({
+      databaseId: appwriteDatabaseId,
+      tableId,
+      rowId: existing.rows[0].$id,
+      data: { status },
+    });
   } else {
-    await appwriteDatabases.createDocument(
-      appwriteDatabaseId,
-      collectionId,
-      ID.unique(),
-      { userId, questionId, status },
-    );
+    await appwriteTablesDB.createRow({
+      databaseId: appwriteDatabaseId,
+      tableId,
+      rowId: ID.unique(),
+      data: { userId, questionId, status },
+    });
   }
 }
 
@@ -64,15 +64,15 @@ export async function setQuestionStatus(
 export async function getFavoriteQuestionIds(
   userId: string,
 ): Promise<string[]> {
-  const collectionId = getCollectionId(FAVORITES_COLLECTION);
-  const res = await appwriteDatabases.listDocuments<
-    Models.Document & { questionId: string }
-  >(
-    appwriteDatabaseId,
-    collectionId,
-    [Query.equal('userId', userId), Query.limit(500)],
-  );
-  return res.documents.map((d) => d.questionId);
+  const tableId = getTableId(FAVORITES_COLLECTION);
+  const res = await appwriteTablesDB.listRows<
+    Models.Row & { questionId: string }
+  >({
+    databaseId: appwriteDatabaseId,
+    tableId,
+    queries: [Query.equal('userId', userId), Query.limit(500)],
+  });
+  return res.rows.map((row) => row.questionId);
 }
 
 /** Добавить вопрос в избранное */
@@ -80,23 +80,23 @@ export async function addFavorite(
   userId: string,
   questionId: string,
 ): Promise<void> {
-  const collectionId = getCollectionId(FAVORITES_COLLECTION);
-  const existing = await appwriteDatabases.listDocuments(
-    appwriteDatabaseId,
-    collectionId,
-    [
+  const tableId = getTableId(FAVORITES_COLLECTION);
+  const existing = await appwriteTablesDB.listRows({
+    databaseId: appwriteDatabaseId,
+    tableId,
+    queries: [
       Query.equal('userId', userId),
       Query.equal('questionId', questionId),
       Query.limit(1),
     ],
-  );
-  if (existing.documents.length > 0) return;
-  await appwriteDatabases.createDocument(
-    appwriteDatabaseId,
-    collectionId,
-    ID.unique(),
-    { userId, questionId },
-  );
+  });
+  if (existing.rows.length > 0) return;
+  await appwriteTablesDB.createRow({
+    databaseId: appwriteDatabaseId,
+    tableId,
+    rowId: ID.unique(),
+    data: { userId, questionId },
+  });
 }
 
 /** Убрать вопрос из избранного */
@@ -104,20 +104,20 @@ export async function removeFavorite(
   userId: string,
   questionId: string,
 ): Promise<void> {
-  const collectionId = getCollectionId(FAVORITES_COLLECTION);
-  const existing = await appwriteDatabases.listDocuments(
-    appwriteDatabaseId,
-    collectionId,
-    [
+  const tableId = getTableId(FAVORITES_COLLECTION);
+  const existing = await appwriteTablesDB.listRows({
+    databaseId: appwriteDatabaseId,
+    tableId,
+    queries: [
       Query.equal('userId', userId),
       Query.equal('questionId', questionId),
       Query.limit(1),
     ],
-  );
-  if (existing.documents.length === 0) return;
-  await appwriteDatabases.deleteDocument(
-    appwriteDatabaseId,
-    collectionId,
-    existing.documents[0].$id,
-  );
+  });
+  if (existing.rows.length === 0) return;
+  await appwriteTablesDB.deleteRow({
+    databaseId: appwriteDatabaseId,
+    tableId,
+    rowId: existing.rows[0].$id,
+  });
 }

@@ -50,3 +50,6 @@ export const getCollectionId = (collectionName: CollectionName): string => {
   return id;
 };
 
+/** ID таблицы для TablesDB API (то же значение, что и коллекция). */
+export const getTableId = getCollectionId;
+
